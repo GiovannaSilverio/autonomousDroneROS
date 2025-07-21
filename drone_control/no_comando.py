@@ -1,4 +1,3 @@
-# interface_node.py (CORRIGIDO)
 
 import rclpy
 from rclpy.node import Node
@@ -10,7 +9,6 @@ class InterfaceNode(Node):
     def __init__(self):
         super().__init__('interface_node')
         
-        # O nome correto da variável
         self.drone_posicao = {
             'x': 400.0,
             'y': 150.0,

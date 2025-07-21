@@ -19,9 +19,7 @@ class LidarNode(Node):
             Obstaculo(x=300, z=-100, largura=50, profundidade=50, altura=50)
         ]
 
-        # Publisher de String
         self.lidar_publisher = self.create_publisher(String, 'distancia', 10)
-        # Subscriber de String
         self.state_subscriber = self.create_subscription(String, 'posicao', self.posicaoCallback, 10)
 
     def posicaoCallback(self, msg):
@@ -32,10 +30,9 @@ class LidarNode(Node):
             self.drone_y = float(dados.get('y', 0.0))
             self.drone_z = float(dados.get('z', 0.0))
         except (ValueError, IndexError) as e:
-            self.get_logger().error(f'Erro ao interpretar state_str no Lidar: {msg.data}. Erro: {e}')
+            self.get_logger().error(f'Erro ao interpretar posicao no Lidar: {msg.data}. Erro: {e}')
             return
         
-        # A lógica de cálculo do Lidar é chamada aqui
         self.update_lidar()
 
     def update_lidar(self):
@@ -48,10 +45,10 @@ class LidarNode(Node):
         
         distancia = chao_y - self.drone_y
 
-        # Formata a medição como uma string
-        lidar_str = f"dist:{distancia:.1f},chao_y:{chao_y:.1f}"
+        # Publica a distancia do chao/obstaculos
+        lidar_distancia = f"dist:{distancia:.1f},chao_y:{chao_y:.1f}"
         msg = String()
-        msg.data = lidar_str
+        msg.data = lidar_distancia
         self.lidar_publisher.publish(msg)
 
 def main(args=None):
