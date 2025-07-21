@@ -1,5 +1,5 @@
 ## O que é o projeto?
-ste pacote ROS2 contém um sistema de simulação de um drone desenvolvido com Pygame.
+Este pacote ROS2 contém um sistema de simulação de um drone desenvolvido com Pygame.
 
 ## Pré-requisitos
 
