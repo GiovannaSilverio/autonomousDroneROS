@@ -1,13 +1,16 @@
+# interface_node.py (CORRIGIDO)
+
 import rclpy
 from rclpy.node import Node
 import pygame
 import math
-from std_msgs.msg import String # Única mensagem necessária
+from std_msgs.msg import String
 
 class InterfaceNode(Node):
     def __init__(self):
         super().__init__('interface_node')
         
+        # O nome correto da variável
         self.drone_posicao = {
             'x': 400.0,
             'y': 150.0,
@@ -15,11 +18,8 @@ class InterfaceNode(Node):
             'yaw': 0.0
         }
 
-        # Publishers enviam Strings
         self.cmd_vel_publisher = self.create_publisher(String, 'velocidade', 10)
         self.throttle_publisher = self.create_publisher(String, 'throttle', 10)
-        
-        # Subscriber recebe uma String
         self.pose_subscriber = self.create_subscription(String, 'posicao', self.posicao_callback, 10)
 
         pygame.init()
@@ -90,16 +90,20 @@ class InterfaceNode(Node):
         pygame.display.flip()
 
     def desenhar_vista_superior(self, area):
-        yaw_rad = math.radians(self.drone_state.get('yaw', 0.0))
-        centro_x = int(self.drone_state.get('x', 0.0))
-        centro_z = area.top + area.height // 2 + int(self.drone_state.get('z', 0.0))
+        # --- CORREÇÃO AQUI ---
+        yaw_rad = math.radians(self.drone_posicao.get('yaw', 0.0))
+        centro_x = int(self.drone_posicao.get('x', 0.0))
+        centro_z = area.top + area.height // 2 + int(self.drone_posicao.get('z', 0.0))
+        # --- FIM DA CORREÇÃO ---
         dx, dz = math.cos(yaw_rad) * 20, math.sin(yaw_rad) * 20
         pygame.draw.circle(self.screen, (100, 100, 255), (centro_x, centro_z), 10)
         pygame.draw.line(self.screen, (255, 0, 0), (centro_x, centro_z), (centro_x + dx, centro_z + dz), 3)
 
     def desenhar_vista_lateral(self, area):
-        centro_z_tela = area.left + area.width // 2 + int(self.drone_state.get('z', 0.0))
-        centro_y_tela = area.top + int(self.drone_state.get('y', 0.0))
+        # --- CORREÇÃO AQUI ---
+        centro_z_tela = area.left + area.width // 2 + int(self.drone_posicao.get('z', 0.0))
+        centro_y_tela = area.top + int(self.drone_posicao.get('y', 0.0))
+        # --- FIM DA CORREÇÃO ---
         corpo_rect = pygame.Rect(0, 0, 30, 10)
         corpo_rect.center = (centro_z_tela, centro_y_tela)
         pygame.draw.rect(self.screen, (100, 100, 255), corpo_rect)
