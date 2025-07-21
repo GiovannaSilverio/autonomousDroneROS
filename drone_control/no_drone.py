@@ -55,6 +55,7 @@ class Drone:
         else:
             self.parada_emergencia = False
 
+#publica no nó posição as coordenadas x,y,z e subscreve em velocidade, distancia e throttle
 class DroneNode(Node):
     def __init__(self):
         super().__init__('droneNode')

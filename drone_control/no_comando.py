@@ -2,23 +2,29 @@ import rclpy
 from rclpy.node import Node
 import pygame
 import math
-from geometry_msgs.msg import Twist, Pose
-from std_msgs.msg import Float64
+from std_msgs.msg import String # Única mensagem necessária
 
 class InterfaceNode(Node):
     def __init__(self):
         super().__init__('interface_node')
-        self.drone_pose = Pose()
-        self.drone_pose.position.x = 400.0
-        self.drone_pose.position.y = 150.0
+        
+        self.drone_posicao = {
+            'x': 400.0,
+            'y': 150.0,
+            'z': 0.0,
+            'yaw': 0.0
+        }
 
-        self.cmd_vel_publisher = self.create_publisher(Twist, '/drone/cmd_vel', 10)
-        self.throttle_publisher = self.create_publisher(Float64, '/drone/throttle', 10)
-        self.pose_subscriber = self.create_subscription(Pose, '/drone/pose', self.pose_callback, 10)
+        # Publishers enviam Strings
+        self.cmd_vel_publisher = self.create_publisher(String, 'velocidade', 10)
+        self.throttle_publisher = self.create_publisher(String, 'throttle', 10)
+        
+        # Subscriber recebe uma String
+        self.pose_subscriber = self.create_subscription(String, 'posicao', self.posicao_callback, 10)
 
         pygame.init()
         self.screen = pygame.display.set_mode((800, 600))
-        pygame.display.set_caption("Drone 3D Simulação)")
+        pygame.display.set_caption("Drone 3D Simulação (String)")
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont(None, 24)
 
@@ -26,8 +32,15 @@ class InterfaceNode(Node):
         self.obstaculos_alturas = [100, 50]
         self.current_throttle = 50.0
 
-    def pose_callback(self, msg: Pose):
-        self.drone_pose = msg
+    def posicao_callback(self, msg):
+        try:
+            dados = dict(item.split(':') for item in msg.data.split(','))
+            self.drone_posicao['x'] = float(dados.get('x', self.drone_posicao['x']))
+            self.drone_posicao['y'] = float(dados.get('y', self.drone_posicao['y']))
+            self.drone_posicao['z'] = float(dados.get('z', self.drone_posicao['z']))
+            self.drone_posicao['yaw'] = float(dados.get('yaw', self.drone_posicao['yaw']))
+        except (ValueError, IndexError):
+            self.get_logger().warn(f"Recebida mensagem de posição mal formatada: {msg.data}")
 
     def run(self):
         running = True
@@ -45,25 +58,24 @@ class InterfaceNode(Node):
 
     def handle_keys(self):
         keys = pygame.key.get_pressed()
-        cmd_vel_msg = Twist()
-
+        
         if keys[pygame.K_UP]: self.current_throttle += 1.0
         if keys[pygame.K_DOWN]: self.current_throttle -= 1.0
         self.current_throttle = max(0, min(100, self.current_throttle))
-        throttle_msg = Float64()
-        throttle_msg.data = self.current_throttle
+        
+        throttle_msg = String()
+        throttle_msg.data = str(self.current_throttle)
         self.throttle_publisher.publish(throttle_msg)
 
-        if keys[pygame.K_w]: cmd_vel_msg.linear.x = 10.0
-        elif keys[pygame.K_s]: cmd_vel_msg.linear.x = -10.0
-        else: cmd_vel_msg.linear.x = 0.0
-        if keys[pygame.K_d]: cmd_vel_msg.linear.y = 10.0
-        elif keys[pygame.K_a]: cmd_vel_msg.linear.y = -10.0
-        else: cmd_vel_msg.linear.y = 0.0
-        if keys[pygame.K_LEFT]: cmd_vel_msg.angular.z = 15.0
-        elif keys[pygame.K_RIGHT]: cmd_vel_msg.angular.z = -15.0
-        else: cmd_vel_msg.angular.z = 0.0
-        self.cmd_vel_publisher.publish(cmd_vel_msg)
+        pitch = 10.0 if keys[pygame.K_w] else (-10.0 if keys[pygame.K_s] else 0.0)
+        roll = 10.0 if keys[pygame.K_d] else (-10.0 if keys[pygame.K_a] else 0.0)
+        yaw_cmd = 15.0 if keys[pygame.K_LEFT] else (-15.0 if keys[pygame.K_RIGHT] else 0.0)
+        
+        velocidade = f"pitch:{pitch},roll:{roll},yaw_cmd:{yaw_cmd}"
+        
+        velocidade_msg = String()
+        velocidade_msg.data = velocidade
+        self.cmd_vel_publisher.publish(velocidade_msg)
 
     def draw(self):
         self.screen.fill((255, 255, 255))
@@ -78,17 +90,16 @@ class InterfaceNode(Node):
         pygame.display.flip()
 
     def desenhar_vista_superior(self, area):
-        q = self.drone_pose.orientation
-        yaw_rad = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
-        centro_x = int(self.drone_pose.position.x)
-        centro_z = area.top + area.height // 2 + int(self.drone_pose.position.z)
+        yaw_rad = math.radians(self.drone_state.get('yaw', 0.0))
+        centro_x = int(self.drone_state.get('x', 0.0))
+        centro_z = area.top + area.height // 2 + int(self.drone_state.get('z', 0.0))
         dx, dz = math.cos(yaw_rad) * 20, math.sin(yaw_rad) * 20
         pygame.draw.circle(self.screen, (100, 100, 255), (centro_x, centro_z), 10)
         pygame.draw.line(self.screen, (255, 0, 0), (centro_x, centro_z), (centro_x + dx, centro_z + dz), 3)
 
     def desenhar_vista_lateral(self, area):
-        centro_z_tela = area.left + area.width // 2 + int(self.drone_pose.position.z)
-        centro_y_tela = area.top + int(self.drone_pose.position.y)
+        centro_z_tela = area.left + area.width // 2 + int(self.drone_state.get('z', 0.0))
+        centro_y_tela = area.top + int(self.drone_state.get('y', 0.0))
         corpo_rect = pygame.Rect(0, 0, 30, 10)
         corpo_rect.center = (centro_z_tela, centro_y_tela)
         pygame.draw.rect(self.screen, (100, 100, 255), corpo_rect)

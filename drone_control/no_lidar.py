@@ -10,7 +10,7 @@ class Obstaculo:
 
 class LidarNode(Node):
     def __init__(self):
-        super().__init__('lidar_node_str')
+        super().__init__('lidar_node')
         self.drone_x = 0.0
         self.drone_y = 0.0
         self.drone_z = 0.0
@@ -22,11 +22,11 @@ class LidarNode(Node):
         # Publisher de String
         self.lidar_publisher = self.create_publisher(String, 'distancia', 10)
         # Subscriber de String
-        self.state_subscriber = self.create_subscription(String, '/drone/state_str', self.state_callback, 10)
+        self.state_subscriber = self.create_subscription(String, 'posicao', self.posicaoCallback, 10)
 
-    def state_callback(self, msg):
+    def posicaoCallback(self, msg):
         try:
-            # Precisa interpretar a string de estado apenas para pegar x, y, z
+            # Pega as posicoes x, y, z
             dados = dict(item.split(':') for item in msg.data.split(','))
             self.drone_x = float(dados.get('x', 0.0))
             self.drone_y = float(dados.get('y', 0.0))
